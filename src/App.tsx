@@ -3,13 +3,15 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Index from "./pages/Index";
-import Round1 from "./pages/Round1";
-import Round2 from "./pages/Round2";
-import Round3 from "./pages/Round3";
+import Scoreboard from "./pages/Scoreboard";
+import FinalResult from "./pages/FinalResult";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+
+import MinecraftBackground from "./components/MinecraftBackground";
 
 const queryClient = new QueryClient();
 
@@ -18,14 +20,28 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/round1" element={<Round1 />} />
-          <Route path="/round2" element={<Round2 />} />
-          <Route path="/round3" element={<Round3 />} />
+          {/* HOME PAGE with Minecraft Background */}
+          <Route
+            path="/"
+            element={
+              <MinecraftBackground>
+                <Index />
+              </MinecraftBackground>
+            }
+          />
+
+          {/* SINGLE SCOREBOARD PAGE */}
+          <Route path="/scoreboard" element={<Scoreboard />} />
+          <Route path="/final-result" element={<FinalResult />} />
+
+          {/* ADMIN */}
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+          {/* FALLBACK */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

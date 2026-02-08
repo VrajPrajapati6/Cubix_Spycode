@@ -4,6 +4,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbar but keep scroll (touch, wheel, keyboard) */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 @layer base {
   :root {
     --background: 220 20% 10%;
@@ -149,4 +158,159 @@
 .frozen-row {
   animation: freeze-pulse 2s ease-in-out infinite;
   background: hsl(var(--mc-blue) / 0.1) !important;
+}
+
+/* --- Nether / Scoreboard theme --- */
+
+/* Moving lava blocks (small Minecraft lava squares) */
+@keyframes lava-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+  25% {
+    transform: translate(4px, -6px) scale(1.05);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate(-3px, -10px) scale(0.98);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(5px, -4px) scale(1.02);
+    opacity: 0.7;
+  }
+}
+.lava-block {
+  image-rendering: pixelated;
+  border-radius: 1px;
+  animation: lava-drift ease-in-out infinite;
+}
+
+/* Premium glass panel (Nether portal style) */
+.glass-panel {
+  background: linear-gradient(
+    145deg,
+    rgba(20, 12, 8, 0.75) 0%,
+    rgba(40, 18, 8, 0.6) 50%,
+    rgba(15, 8, 12, 0.8) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 106, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 140, 26, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 20px 50px -15px rgba(0, 0, 0, 0.5),
+    0 0 60px -20px rgba(255, 106, 0, 0.15);
+}
+
+/* --- Real frozen ice row: glossy, wet patches, cracks --- */
+@keyframes ice-shine {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+@keyframes ice-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 60px rgba(200, 235, 255, 0.06),
+      inset 0 0 120px rgba(180, 220, 255, 0.03),
+      0 0 20px rgba(160, 210, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 70px rgba(210, 240, 255, 0.08),
+      inset 0 0 130px rgba(190, 225, 255, 0.04),
+      0 0 28px rgba(170, 220, 255, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+.frozen-crystal {
+  position: relative;
+  /* Base ice: deep frozen blue-green with variation */
+  background:
+    /* Glossy highlight (top-left specular) */
+    radial-gradient(
+      ellipse 120% 80% at 15% 20%,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(220, 245, 255, 0.08) 25%,
+      transparent 55%
+    ),
+    /* Second glossy spot (mid-right) */
+    radial-gradient(
+      ellipse 80% 100% at 75% 50%,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(230, 248, 255, 0.05) 30%,
+      transparent 50%
+    ),
+    /* Wet / dark patches (like thicker ice or shadow in ice) */
+    radial-gradient(
+      ellipse 50% 60% at 85% 70%,
+      rgba(25, 55, 85, 0.5) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 40% 50% at 20% 75%,
+      rgba(30, 60, 90, 0.4) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 45% 45% at 55% 35%,
+      rgba(35, 65, 95, 0.35) 0%,
+      transparent 50%
+    ),
+    /* Base ice layers */
+    linear-gradient(
+      165deg,
+      rgba(35, 75, 110, 0.65) 0%,
+      rgba(45, 85, 120, 0.6) 25%,
+      rgba(40, 80, 115, 0.65) 50%,
+      rgba(38, 78, 112, 0.7) 100%
+    ) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(200, 230, 255, 0.25) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 40, 80, 0.25),
+    inset 2px 0 0 rgba(255, 255, 255, 0.06),
+    inset -2px 0 0 rgba(0, 30, 60, 0.15);
+  animation: ice-glow 4s ease-in-out infinite;
+}
+/* Top icy rim (glossy edge) */
+.frozen-crystal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.04) 15%,
+    transparent 40%,
+    transparent 60%,
+    rgba(0, 40, 80, 0.08) 100%
+  );
+  animation: ice-shine 3s ease-in-out infinite;
+}
+/* Very subtle frost lines (reinforce crack feel without competing with SVG) */
+.frozen-crystal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(92deg, transparent 45%, rgba(70, 120, 160, 0.12) 46%, transparent 47%),
+    linear-gradient(88deg, transparent 62%, rgba(60, 110, 155, 0.1) 63%, transparent 64%);
+  background-size: 200px 100%;
+  background-position: 0 0, 80px 0;
+  opacity: 0.9;
 }

@@ -1,93 +1,90 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLogin, setIsLogin] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [secret, setSecret] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    setSubmitting(true);
+  // Redirect if already logged in
+  useEffect(() => {
+    if (localStorage.getItem("cubix_admin_auth") === "true") {
+      navigate("/admin/dashboard");
+    }
+  }, [navigate]);
 
-    try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({ title: "Login failed", description: error.message, variant: "destructive" });
-        } else {
-          navigate("/admin/dashboard");
-        }
-      } else {
-        const { error } = await signUp(email, password);
-        if (error) {
-          toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-        } else {
-          toast({ title: "Check your email", description: "Confirm your email to continue." });
-        }
-      }
-    } finally {
-      setSubmitting(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET;
+
+    if (!ADMIN_SECRET) {
+      toast({
+        title: "CONFIG ERROR",
+        description: "Admin secret not configured.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (secret === ADMIN_SECRET) {
+      localStorage.setItem("cubix_admin_auth", "true");
+      toast({
+        title: "ACCESS GRANTED",
+        description: "Welcome back, Commander.",
+        className: "font-pixel bg-mc-stone text-white border-2 border-black",
+      });
+      navigate("/admin/dashboard");
+    } else {
+      toast({
+        title: "ACCESS DENIED",
+        description: "Invalid security key.",
+        variant: "destructive",
+        className: "font-pixel border-2 border-black",
+      });
+      setSecret("");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="mc-panel p-8 w-full max-w-md">
-        <h1 className="font-pixel text-xl text-mc-gold text-center mb-6">
-          ⚙️ ADMIN
-        </h1>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-black/80">
+      <div className="mc-panel p-8 w-full max-w-md border-4 border-mc-stone shadow-[8px_8px_0_0_#000]">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-12 h-12 mb-4 text-4xl animate-bounce">🗝️</div>
+          <h1 className="font-pixel text-xl text-mc-gold tracking-widest">
+            RESTRICTED AREA
+          </h1>
+          <p className="font-silk text-xs text-muted-foreground mt-2">
+            Enter the admin security key.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="font-pixel text-[10px] text-muted-foreground mb-1 block">EMAIL</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-secondary border-mc-stone font-silk"
-              required
-            />
-          </div>
-          <div>
-            <label className="font-pixel text-[10px] text-muted-foreground mb-1 block">PASSWORD</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-secondary border-mc-stone font-silk"
-              required
-              minLength={6}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Input
+            type="password"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            placeholder="Enter secret key"
+            className="bg-black/50 border-2 border-mc-stone text-center text-lg font-pixel text-white h-14 focus:border-mc-green transition-colors"
+            autoFocus
+          />
 
           <button
             type="submit"
-            disabled={submitting}
-            className="mc-btn w-full py-3 text-xs font-pixel text-foreground disabled:opacity-50"
+            className="mc-btn w-full py-4 text-sm font-pixel text-foreground active:translate-y-1"
           >
-            {submitting ? "..." : isLogin ? "LOGIN" : "SIGN UP"}
+            UNLOCK CONSOLE
           </button>
         </form>
 
-        <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="mt-4 w-full text-center font-silk text-xs text-muted-foreground hover:text-foreground"
-        >
-          {isLogin ? "Need an account? Sign up" : "Already have an account? Login"}
-        </button>
-
-        <div className="mt-6 text-center">
-          <a href="/" className="font-silk text-xs text-muted-foreground hover:text-foreground">
-            ← Back to scoreboard
+        <div className="mt-8 text-center border-t-2 border-dashed border-white/10 pt-4">
+          <a
+            href="/"
+            className="font-silk text-xs text-muted-foreground hover:text-mc-gold transition-colors"
+          >
+            ← Return to Public Scoreboard
           </a>
         </div>
       </div>

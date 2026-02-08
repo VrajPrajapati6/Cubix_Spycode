@@ -1,308 +1,485 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { useTeams, type Team } from "@/hooks/useTeams";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { Shield, Trash2, Snowflake, Plus, Minus } from "lucide-react";
+import { LogOut, Trash2 } from "lucide-react";
+
+type Team = {
+  _id: string;
+  teamId: string;
+  teamName: string;
+  skulls: number;
+  shields: number;
+  attacks: number;
+  freezeUntil?: string | null;
+};
+
+const API_URL = `${import.meta.env.VITE_API_URL}/teams`;
+const FINAL_RESULT_URL = `${import.meta.env.VITE_API_URL}/final-result`;
 
 export default function AdminDashboard() {
-  const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [activeRound, setActiveRound] = useState(1);
 
-  const { data: teams = [], isLoading } = useTeams(activeRound, 3000);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [finalResultPublished, setFinalResultPublished] = useState(false);
 
-  // Add team form state
+  /* ---------------- AUTH ---------------- */
+  useEffect(() => {
+    if (localStorage.getItem("cubix_admin_auth") !== "true") {
+      navigate("/admin");
+    }
+    fetchTeams();
+    fetchFinalResultState();
+    const i = setInterval(fetchTeams, 1000);
+    const j = setInterval(fetchFinalResultState, 5000);
+    return () => {
+      clearInterval(i);
+      clearInterval(j);
+    };
+  }, []);
+
+  const headers = {
+    "Content-Type": "application/json",
+    "x-admin-key": import.meta.env.VITE_ADMIN_SECRET,
+  };
+
+  /* ---------------- FETCH ---------------- */
+  const fetchTeams = async () => {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    setTeams(data);
+    setLoading(false);
+  };
+
+  const fetchFinalResultState = async () => {
+    try {
+      const res = await fetch(FINAL_RESULT_URL);
+      const data = await res.json();
+      setFinalResultPublished(data.published ?? false);
+    } catch (_) {}
+  };
+
+  // ADD TEAM state
   const [newTeamId, setNewTeamId] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
-  const [newSkulls, setNewSkulls] = useState(0);
-  const [newShields, setNewShields] = useState(0);
-
-  // Freeze state
-  const [freezeMinutes, setFreezeMinutes] = useState(10);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="font-pixel text-sm text-muted-foreground animate-pulse">Loading...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    navigate("/admin");
-    return null;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="mc-panel p-8 text-center">
-          <h2 className="font-pixel text-mc-red text-sm mb-4">ACCESS DENIED</h2>
-          <p className="font-silk text-xs text-muted-foreground mb-4">
-            You don't have admin privileges.
-          </p>
-          <button onClick={signOut} className="mc-btn px-4 py-2 text-[10px] font-pixel text-foreground">
-            SIGN OUT
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["teams", activeRound] });
+  const [initialScore, setInitialScore] = useState(0);
+  const [initialShields, setInitialShields] = useState(0);
+  const [initialAttacks, setInitialAttacks] = useState(0);
 
   const addTeam = async () => {
-    if (!newTeamId.trim() || !newTeamName.trim()) return;
-    const { error } = await supabase.from("teams").insert({
-      team_id: newTeamId.trim(),
-      team_name: newTeamName.trim(),
-      round: activeRound,
-      skulls: newSkulls,
-      shields: activeRound === 3 ? newShields : 0,
+    if (!newTeamId || !newTeamName) return;
+
+    await fetch(API_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        teamId: newTeamId,
+        teamName: newTeamName,
+        skulls: Math.max(0, initialScore),
+        shields: Math.max(0, initialShields),
+        attacks: Math.max(0, initialAttacks),
+      }),
     });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Team added!" });
-      setNewTeamId("");
-      setNewTeamName("");
-      setNewSkulls(0);
-      setNewShields(0);
-      refresh();
+
+    setNewTeamId("");
+    setNewTeamName("");
+    setInitialScore(0);
+    setInitialShields(0);
+    setInitialAttacks(0);
+
+    toast({ title: "Team added" });
+    fetchTeams();
+  };
+
+  /* ---------------- UPDATE TEAM ---------------- */
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  const selectedTeam = teams.find((t) => t._id === selectedId);
+
+  const [scoreValue, setScoreValue] = useState(0);
+  const [scoreMode, setScoreMode] = useState<"add" | "sub">("add");
+
+  const [shieldValue, setShieldValue] = useState(0);
+  const [shieldMode, setShieldMode] = useState<"add" | "sub">("add");
+
+  const [attackValue, setAttackValue] = useState(0);
+  const [attackMode, setAttackMode] = useState<"add" | "sub">("add");
+
+  const [freezeMinutes, setFreezeMinutes] = useState(0);
+  const freezeInputRef = useRef<HTMLInputElement>(null);
+
+  const applyUpdates = async () => {
+    if (!selectedTeam) return;
+
+    const updated = {
+      skulls:
+        scoreMode === "add"
+          ? selectedTeam.skulls + scoreValue
+          : selectedTeam.skulls - scoreValue,
+
+      shields:
+        shieldMode === "add"
+          ? selectedTeam.shields + shieldValue
+          : selectedTeam.shields - shieldValue,
+
+      attacks:
+        attackMode === "add"
+          ? selectedTeam.attacks + attackValue
+          : selectedTeam.attacks - attackValue,
+    };
+
+    updated.skulls = Math.max(0, updated.skulls);
+    updated.shields = Math.max(0, Math.min(3, updated.shields));
+    updated.attacks = Math.max(0, updated.attacks);
+
+    const payload: Record<string, unknown> = { ...updated };
+
+    // Freeze minutes >= 0: 0 = unfreeze (clear), > 0 = set duration from now
+    const minutes = freezeInputRef.current
+      ? Number(freezeInputRef.current.value)
+      : freezeMinutes;
+    const mins = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
+
+    if (mins >= 0) {
+      payload.freezeUntil =
+        mins > 0
+          ? new Date(Date.now() + mins * 60000).toISOString()
+          : null;
     }
+
+    await fetch(`${API_URL}/${selectedTeam._id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    toast({ title: "Updates applied" });
+    fetchTeams();
   };
 
-  const updateSkulls = async (team: Team, delta: number) => {
-    const { error } = await supabase
-      .from("teams")
-      .update({ skulls: team.skulls + delta })
-      .eq("id", team.id);
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else refresh();
+  const deleteTeam = async () => {
+    if (!selectedTeam) return;
+    if (!confirm(`Delete ${selectedTeam.teamName}?`)) return;
+
+    await fetch(`${API_URL}/${selectedTeam._id}`, {
+      method: "DELETE",
+      headers,
+    });
+
+    setSelectedId("");
+    toast({ title: "Team removed" });
+    fetchTeams();
   };
 
-  const updateShields = async (team: Team, delta: number) => {
-    const newVal = Math.max(0, Math.min(3, team.shields + delta));
-    const { error } = await supabase
-      .from("teams")
-      .update({ shields: newVal })
-      .eq("id", team.id);
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else refresh();
+  const publishFinalResult = async () => {
+    await fetch(`${FINAL_RESULT_URL}/add`, { method: "POST", headers });
+    setFinalResultPublished(true);
+    toast({ title: "Final result published — top 3 now visible" });
+    fetchFinalResultState();
   };
 
-  const freezeTeam = async (team: Team) => {
-    const freezeUntil = new Date(Date.now() + freezeMinutes * 60000).toISOString();
-    const { error } = await supabase
-      .from("teams")
-      .update({ freeze_until: freezeUntil })
-      .eq("id", team.id);
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else {
-      toast({ title: `${team.team_name} frozen for ${freezeMinutes}m` });
-      refresh();
-    }
+  const unpublishFinalResult = async () => {
+    await fetch(`${FINAL_RESULT_URL}/remove`, { method: "POST", headers });
+    setFinalResultPublished(false);
+    toast({ title: "Final result hidden — showing Announced Soon" });
+    fetchFinalResultState();
   };
 
-  const removeTeam = async (team: Team) => {
-    if (!confirm(`Remove ${team.team_name}?`)) return;
-    const { error } = await supabase.from("teams").delete().eq("id", team.id);
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else refresh();
+  const logout = () => {
+    localStorage.removeItem("cubix_admin_auth");
+    navigate("/admin");
   };
 
-  const roundLabels = ["", "🟢 Round 1 — Spy Game", "🟡 Round 2 — Packet Purchase", "🔴 Round 3 — Grand Finale"];
+  const freezeRemaining = (t?: string | null) => {
+    if (!t) return null;
+    const diff = new Date(t).getTime() - Date.now();
+    return diff > 0 ? diff : null;
+  };
 
+  /* ---------------- UI ---------------- */
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-pixel text-sm md:text-lg text-mc-gold">⚙️ ADMIN PANEL</h1>
-          <div className="flex gap-2">
-            <a href="/" className="mc-btn px-3 py-2 text-[10px] font-pixel text-foreground">
-              VIEW SITE
-            </a>
-            <button onClick={signOut} className="mc-btn px-3 py-2 text-[10px] font-pixel text-mc-red">
-              LOGOUT
-            </button>
-          </div>
+    <div className="min-h-screen p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* HEADER */}
+        <div className="flex justify-between mb-6">
+          <h1 className="font-pixel text-lg text-mc-gold">⚙ ADMIN PANEL</h1>
+          <button
+            onClick={logout}
+            className="mc-btn text-mc-red px-3 py-2 text-xs"
+          >
+            <LogOut size={12} /> LOGOUT
+          </button>
         </div>
 
-        {/* Round tabs */}
-        <div className="flex gap-2 mb-6">
-          {[1, 2, 3].map((r) => (
-            <button
-              key={r}
-              onClick={() => setActiveRound(r)}
-              className={`mc-btn px-4 py-2 text-[10px] font-pixel ${
-                activeRound === r ? "text-mc-gold" : "text-muted-foreground"
-              }`}
-            >
-              R{r}
-            </button>
-          ))}
-        </div>
-
-        <h2 className="font-pixel text-xs text-foreground mb-4">{roundLabels[activeRound]}</h2>
-
-        {/* Add team */}
         <div className="mc-panel p-4 mb-6">
-          <h3 className="font-pixel text-[10px] text-mc-green mb-3">➕ ADD TEAM</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h3 className="font-pixel text-xs text-mc-green mb-4">➕ ADD TEAM</h3>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* TEAM ID */}
             <div>
-              <label className="font-pixel text-[8px] text-muted-foreground">TEAM ID</label>
+              <label className="block font-pixel text-[9px] text-muted-foreground mb-1">
+                TEAM ID
+              </label>
               <Input
                 value={newTeamId}
                 onChange={(e) => setNewTeamId(e.target.value)}
-                className="bg-secondary border-mc-stone font-silk text-sm"
-                placeholder="T01"
+                className="bg-black/60 text-white font-pixel"
               />
             </div>
+
+            {/* TEAM NAME */}
             <div>
-              <label className="font-pixel text-[8px] text-muted-foreground">TEAM NAME</label>
+              <label className="block font-pixel text-[9px] text-muted-foreground mb-1">
+                TEAM NAME
+              </label>
               <Input
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
-                className="bg-secondary border-mc-stone font-silk text-sm"
-                placeholder="Team Alpha"
+                className="bg-black/60 text-white font-pixel"
               />
             </div>
+
+            {/* SCORE */}
             <div>
-              <label className="font-pixel text-[8px] text-muted-foreground">SKULLS</label>
+              <label className="block font-pixel text-[9px] text-mc-green mb-1">
+                💀 SCORE
+              </label>
               <Input
                 type="number"
-                value={newSkulls}
-                onChange={(e) => setNewSkulls(Number(e.target.value))}
-                className="bg-secondary border-mc-stone font-silk text-sm"
+                value={initialScore}
+                onChange={(e) => setInitialScore(+e.target.value)}
+                className="bg-black/60 text-white font-pixel text-center"
               />
             </div>
-            {activeRound === 3 && (
-              <div>
-                <label className="font-pixel text-[8px] text-muted-foreground">SHIELDS</label>
-                <Input
-                  type="number"
-                  value={newShields}
-                  min={0}
-                  max={3}
-                  onChange={(e) => setNewShields(Number(e.target.value))}
-                  className="bg-secondary border-mc-stone font-silk text-sm"
-                />
-              </div>
-            )}
+
+            {/* SHIELDS */}
+            <div>
+              <label className="block font-pixel text-[9px] text-mc-blue mb-1">
+                🛡 SHIELDS
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={3}
+                value={initialShields}
+                onChange={(e) => setInitialShields(+e.target.value)}
+                className="bg-black/60 text-white font-pixel text-center"
+              />
+            </div>
+
+            {/* ATTACKS */}
+            <div>
+              <label className="block font-pixel text-[9px] text-mc-red mb-1">
+                ⚔ ATTACKS
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={initialAttacks}
+                onChange={(e) => setInitialAttacks(+e.target.value)}
+                className="bg-black/60 text-white font-pixel text-center"
+              />
+            </div>
           </div>
-          <button onClick={addTeam} className="mc-btn mt-3 px-4 py-2 text-[10px] font-pixel text-mc-green">
+
+          <button
+            onClick={addTeam}
+            className="mc-btn mt-4 px-4 py-2 text-[10px] font-pixel text-mc-green"
+          >
             ADD TEAM
           </button>
+
+          <p className="mt-2 font-pixel text-[8px] text-muted-foreground">
+            Set initial score, shields, and attacks when creating the team.
+          </p>
         </div>
 
-        {/* Freeze minutes input (R3 only) */}
-        {activeRound === 3 && (
-          <div className="mc-panel p-4 mb-6">
-            <h3 className="font-pixel text-[10px] text-mc-blue mb-3">❄️ FREEZE DURATION</h3>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                value={freezeMinutes}
-                min={1}
-                max={60}
-                onChange={(e) => setFreezeMinutes(Number(e.target.value))}
-                className="bg-secondary border-mc-stone font-silk text-sm w-24"
-              />
-              <span className="font-silk text-xs text-muted-foreground">minutes</span>
-            </div>
-          </div>
-        )}
+        {/* UPDATE TEAM */}
+        <div className="mc-panel p-4 mb-6">
+          <h3 className="font-pixel text-xs text-mc-blue mb-4">
+            ✏ UPDATE TEAM
+          </h3>
 
-        {/* Team list */}
-        <div className="mc-panel p-4">
-          <h3 className="font-pixel text-[10px] text-mc-gold mb-3">📋 TEAMS ({teams.length})</h3>
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="
+              w-full mb-4 p-2
+              bg-[#0b0f14]
+              text-white
+              font-pixel
+              border-2 border-mc-stone
+              focus:outline-none
+              focus:border-mc-gold
+            "
+          >
+            <option value="">Select team</option>
+            {teams.map((t) => (
+              <option key={t._id} value={t._id}>
+                {t.teamName}
+              </option>
+            ))}
+          </select>
 
-          {isLoading ? (
-            <p className="font-pixel text-xs text-muted-foreground animate-pulse">Loading...</p>
-          ) : !teams.length ? (
-            <p className="font-silk text-xs text-muted-foreground">No teams in this round.</p>
-          ) : (
-            <div className="space-y-2">
-              {teams.map((team) => (
-                <div
-                  key={team.id}
-                  className="flex items-center justify-between bg-secondary/30 border border-border p-3 gap-2 flex-wrap"
+          {selectedTeam && (
+            <>
+              {/* SCORE */}
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="number"
+                  placeholder="Score"
+                  onChange={(e) => setScoreValue(+e.target.value)}
+                />
+                <select
+                  onChange={(e) =>
+                    setScoreMode(e.target.value as "add" | "sub")
+                  }
+                  className="
+                    bg-[#0b0f14]
+                    text-white
+                    font-pixel
+                    px-3 py-2
+                    border-2 border-mc-stone
+                    focus:outline-none
+                    focus:border-mc-gold
+                    cursor-pointer
+                  "
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-pixel text-[10px] text-muted-foreground">{team.team_id}</span>
-                    <span className="font-silk text-sm font-bold truncate">{team.team_name}</span>
-                    <span className="font-pixel text-xs text-mc-green">💀 {team.skulls}</span>
-                    {activeRound === 3 && (
-                      <span className="font-pixel text-xs text-mc-blue">🛡️ {team.shields}</span>
-                    )}
-                  </div>
+                  <option value="add" className="bg-[#0b0f14] text-mc-green">
+                    ADD
+                  </option>
+                  <option value="sub" className="bg-[#0b0f14] text-mc-red">
+                    SUB
+                  </option>
+                </select>
+              </div>
 
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {/* Skulls +/- */}
-                    <button
-                      onClick={() => updateSkulls(team, 10)}
-                      className="mc-btn p-1.5 text-[10px] font-pixel text-mc-green"
-                      title="+10 Skulls"
-                    >
-                      <Plus size={14} />
-                    </button>
-                    <button
-                      onClick={() => updateSkulls(team, -10)}
-                      className="mc-btn p-1.5 text-[10px] font-pixel text-mc-red"
-                      title="-10 Skulls"
-                    >
-                      <Minus size={14} />
-                    </button>
+              {/* SHIELD */}
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="number"
+                  placeholder="Shields"
+                  onChange={(e) => setShieldValue(+e.target.value)}
+                />
+                <select
+                  onChange={(e) =>
+                    setShieldMode(e.target.value as "add" | "sub")
+                  }
+                  className="bg-[#0b0f14] text-white font-pixel px-3 py-2 border-2 border-mc-stone"
+                >
+                  <option value="add" className="bg-[#0b0f14] text-mc-blue">
+                    ADD
+                  </option>
+                  <option value="sub" className="bg-[#0b0f14] text-gray-400">
+                    SUB
+                  </option>
+                </select>
+              </div>
 
-                    {/* R3: Shields */}
-                    {activeRound === 3 && (
-                      <>
-                        <button
-                          onClick={() => updateShields(team, 1)}
-                          className="mc-btn p-1.5 text-[10px] font-pixel text-mc-blue"
-                          title="+1 Shield"
-                        >
-                          <Shield size={14} />
-                          <Plus size={10} />
-                        </button>
-                        <button
-                          onClick={() => updateShields(team, -1)}
-                          className="mc-btn p-1.5 text-[10px] font-pixel text-mc-blue"
-                          title="-1 Shield"
-                        >
-                          <Shield size={14} />
-                          <Minus size={10} />
-                        </button>
-                        <button
-                          onClick={() => freezeTeam(team)}
-                          className="mc-btn p-1.5 text-[10px] font-pixel text-mc-blue"
-                          title="Freeze team"
-                        >
-                          <Snowflake size={14} />
-                        </button>
-                      </>
-                    )}
+              {/* ATTACK */}
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="number"
+                  placeholder="Attacks"
+                  onChange={(e) => setAttackValue(+e.target.value)}
+                />
+                <select
+                  onChange={(e) =>
+                    setAttackMode(e.target.value as "add" | "sub")
+                  }
+                  className="bg-[#0b0f14] text-white font-pixel px-3 py-2 border-2 border-mc-stone"
+                >
+                  <option value="add" className="bg-[#0b0f14] text-mc-red">
+                    ADD
+                  </option>
+                  <option value="sub" className="bg-[#0b0f14] text-gray-400">
+                    SUB
+                  </option>
+                </select>
+              </div>
 
-                    {/* Delete */}
-                    <button
-                      onClick={() => removeTeam(team)}
-                      className="mc-btn p-1.5 text-[10px] font-pixel text-mc-red"
-                      title="Remove team"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+              {/* FREEZE — >= 0: 0 = unfreeze, > 0 = set minutes from now (replaces any running timer) */}
+              <div className="flex gap-2 mb-4">
+                <Input
+                  ref={freezeInputRef}
+                  type="number"
+                  min={0}
+                  placeholder="Freeze min (0 = unfreeze)"
+                  value={freezeMinutes}
+                  onChange={(e) => setFreezeMinutes(Math.max(0, +(e.target.value || 0)))}
+                />
+              </div>
+
+              <div className="flex justify-between">
+                <button onClick={applyUpdates} className="mc-btn text-mc-green">
+                  APPLY
+                </button>
+
+                <button onClick={deleteTeam} className="mc-btn text-mc-red">
+                  <Trash2 size={14} /> DELETE
+                </button>
+              </div>
+            </>
           )}
+        </div>
+
+        {/* FINAL RESULT — Add = publish top 3, Remove = show Announced Soon */}
+        <div className="mc-panel p-4 mb-6">
+          <h3 className="font-pixel text-xs text-mc-gold mb-4">
+            🏆 FINAL RESULT
+          </h3>
+          <p className="font-pixel text-[9px] text-muted-foreground mb-3">
+            {finalResultPublished
+              ? "Published — /final-result shows top 3 from scoreboard."
+              : "Not published — /final-result shows “Announced Soon”."}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={publishFinalResult}
+              className="mc-btn px-4 py-2 text-[10px] font-pixel text-mc-green"
+            >
+              (1) ADD
+            </button>
+            <button
+              onClick={unpublishFinalResult}
+              className="mc-btn px-4 py-2 text-[10px] font-pixel text-mc-red"
+            >
+              (2) REMOVE
+            </button>
+          </div>
+        </div>
+
+        {/* SCOREBOARD */}
+        <div className="mc-panel p-4">
+          <h3 className="font-pixel text-xs text-mc-gold mb-3">
+            📋 SCOREBOARD
+          </h3>
+
+          {loading
+            ? "Loading..."
+            : teams
+                .sort((a, b) => b.skulls - a.skulls)
+                .map((t) => {
+                  const rem = freezeRemaining(t.freezeUntil);
+                  return (
+                    <div key={t._id} className="flex justify-between mb-2">
+                      <span>{t.teamName}</span>
+                      <span>
+                        💀 {t.skulls} 🛡 {t.shields} ⚔ {t.attacks}
+                        {rem && (
+                          <span className="text-cyan-400 ml-2">
+                            ❄ {Math.floor(rem / 60000)}:
+                            {Math.floor((rem % 60000) / 1000)
+                              .toString()
+                              .padStart(2, "0")}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
         </div>
       </div>
     </div>

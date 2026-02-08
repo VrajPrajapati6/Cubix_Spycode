@@ -6,10 +6,12 @@ const Index = () => {
     <div className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
       <PixelParticles count={30} />
 
-      <div className="relative z-10 text-center max-w-3xl mx-auto">
+      <div className="relative z-10 text-center max-w-3xl mx-auto mt-16 md:mt-20">
         {/* Event branding */}
         <div className="mb-2">
-          <span className="font-pixel text-xs text-muted-foreground tracking-widest">TEAM CSI PRESENTS</span>
+          <span className="font-pixel text-sm text-muted-foreground tracking-wider">
+            TEAM CSI PRESENTS
+          </span>
         </div>
 
         <h1 className="font-pixel text-4xl md:text-6xl text-mc-gold mb-2 drop-shadow-lg">
@@ -22,38 +24,34 @@ const Index = () => {
           </span>
         </div>
 
-        <p className="font-silk text-muted-foreground text-sm md:text-base mb-12 max-w-lg mx-auto">
-          A battle of wits, code, and strategy. Earn Skulls, build Shields, and survive the Grand Finale.
+        <p className="font-silk text-muted-foreground text-base md:text-lg mb-12 max-w-xl mx-auto leading-relaxed">
+          A battle of wits, code, and strategy. Earn Skulls, build Shields, and
+          survive the Grand Finale.
         </p>
 
-        {/* Round buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link to="/round1" className="mc-btn px-6 py-4 text-xs font-pixel text-foreground w-64 text-center">
-            🟢 ROUND 1<br />
-            <span className="text-muted-foreground text-[10px] mt-1 block">Spy Game</span>
-          </Link>
-
-          <Link to="/round2" className="mc-btn px-6 py-4 text-xs font-pixel text-foreground w-64 text-center">
-            🟡 ROUND 2<br />
-            <span className="text-muted-foreground text-[10px] mt-1 block">Packet Purchase</span>
-          </Link>
-
-          <Link to="/round3" className="mc-btn px-6 py-4 text-xs font-pixel text-mc-red w-64 text-center">
-            🔴 GRAND FINALE<br />
-            <span className="text-muted-foreground text-[10px] mt-1 block">Champion Rush</span>
-          </Link>
-        </div>
-
-        {/* Admin link */}
-        <div className="mt-12">
-          <Link to="/admin" className="font-silk text-xs text-muted-foreground hover:text-foreground transition-colors">
-            Admin Panel →
+        {/* SINGLE SCOREBOARD BUTTON */}
+        <div className="flex justify-center">
+          <Link
+            to="/scoreboard"
+            className="
+            mc-btn
+            px-5 py-5
+            text-xs md:text-sm
+            font-pixel
+            w-72
+            text-center
+            text-mc-gold
+            bg-[#1a1a1a]
+            border-2 border-[#2e2e2e]
+            hover:text-[#ffd36a]
+            hover:shadow-[0_0_12px_rgba(255,211,106,0.25)]
+            transition-all
+          "
+          >
+            VIEW LIVE SCOREBOARD
           </Link>
         </div>
       </div>
-
-      {/* Ground blocks */}
-      <div className="fixed bottom-0 left-0 right-0 h-8 bg-mc-dirt border-t-4 border-mc-stone z-0" />
     </div>
   );
 };
