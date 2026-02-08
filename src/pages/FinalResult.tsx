@@ -41,12 +41,8 @@ function PodiumColumn({
         px-2 py-3 text-center font-pixel min-h-[4rem]
         flex flex-col items-center justify-center gap-0.5`}
       >
-        <span className={`text-[10px] sm:text-xs ${trophyColor}`}>
-          {label}
-        </span>
-        <span className="text-xs md:text-sm text-white/90">
-          {name}
-        </span>
+        <span className={`text-[10px] sm:text-xs ${trophyColor}`}>{label}</span>
+        <span className="text-xs md:text-sm text-white/90">{name}</span>
       </div>
 
       <div
@@ -113,15 +109,19 @@ export default function FinalResult() {
         </div>
 
         {/* CENTER CONTENT — IGNORE POINTER EVENTS */}
-        <div className="flex-1 flex flex-col items-center justify-center
-                        -translate-y-6 md:-translate-y-10 pointer-events-none">
+        <div
+          className="flex-1 flex flex-col items-center justify-center
+                        -translate-y-6 md:-translate-y-10 pointer-events-none"
+        >
           {loading ? (
             <p className="font-pixel text-orange-200">Loading...</p>
           ) : (
             <>
-              <h1 className="font-pixel text-xl md:text-2xl text-[#ff8c1a]
+              <h1
+                className="font-pixel text-xl md:text-2xl text-[#ff8c1a]
                              drop-shadow-[0_0_10px_rgba(255,140,26,0.6)]
-                             text-center mb-12">
+                             text-center mb-12"
+              >
                 FINAL RESULT
               </h1>
 
@@ -165,8 +165,16 @@ export default function FinalResult() {
         </div>
 
         {/* FOOTER */}
-        <p className="flex-shrink-0 text-center mt-4 font-pixel text-[13px] text-orange-300/60 pointer-events-none">
-          Build With Love By Team CSI
+        <p className="flex-shrink-0 text-center mt-4 font-pixel text-[12px] text-orange-300/60 pointer-events-none">
+          Build With Love By Team CSI –{" "}
+          <a
+            href="https://www.linkedin.com/in/vraj-prajapati-47694832a"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-300 underline hover:text-orange-400"
+          >
+            Vraj Prajapati
+          </a>
         </p>
       </div>
     </div>
