@@ -1,5 +1,14 @@
 {
+  "name": "spycode-backend",
+  "type": "module",
+  "version": "1.0.0",
   "scripts": {
     "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "mongoose": "^8.22.1"
   }
 }
