@@ -166,15 +166,18 @@ export default function FinalResult() {
 
         {/* FOOTER */}
         <p className="flex-shrink-0 text-center mt-4 font-pixel text-[12px] text-orange-300/60 pointer-events-none">
-          Build With Love By Team CSI –{" "}
+          Built With Love By Team CSI
+          <br /> {/* Self-closing tag, no wrapping content */}
+          {/* Contributor –{" "}
           <a
             href="https://www.linkedin.com/in/vraj-prajapati-47694832a"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-orange-300 underline hover:text-orange-400"
+            // Added pointer-events-auto so the link works despite parent having pointer-events-none
+            className="text-orange-300 underline hover:text-orange-400 pointer-events-auto"
           >
             Vraj Prajapati
-          </a>
+          </a> */}
         </p>
       </div>
     </div>

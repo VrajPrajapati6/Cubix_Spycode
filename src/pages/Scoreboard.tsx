@@ -177,14 +177,14 @@ export default function Scoreboard() {
         {/* FOOTER — just below table; Final Result button bottom right */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <p className="font-pixel text-[12px] text-orange-300/60 order-2 md:order-1">
-            Build With Love By Team CSI –{" "}
+            Build With Love By –{" "}
           <a
-            href="https://www.linkedin.com/in/vraj-prajapati-47694832a"
+            href="https://www.csi-nirma.in/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-orange-300 underline hover:text-orange-400"
           >
-            Vraj Prajapati
+            Team CSI 
           </a>
           </p>
           <Link
